@@ -58,7 +58,11 @@ label{font-size:12px;font-weight:bold;color:#50677b;display:block;margin-bottom:
   </div>
   <div style="margin-top:10px;display:flex;gap:10px;align-items:end;flex-wrap:wrap">
    <div><label>تاريخ التقييم</label><input id="date" type="date"></div>
-   <div class="records"><div><label>التقييمات المحفوظة على هذا الجهاز</label><select id="savedRecords"><option value="">اختر تقييمًا محفوظًا</option></select></div><button class="soft" onclick="loadRecord()">فتح</button><button class="danger" onclick="deleteRecord()">حذف</button><button class="soft" onclick="newRecord()">تقييم جديد</button></div>
+   <div class="records">
+    <div><label for="recordSearch">البحث عن تقييم بالاسم أو الكود</label><input id="recordSearch" type="search" placeholder="اكتب اسم السباح أو الكود..." oninput="refreshRecords($('savedRecords').value)" style="min-width:220px"></div>
+    <div><label>التقييمات المحفوظة على هذا الجهاز</label><select id="savedRecords"><option value="">اختر تقييمًا محفوظًا</option></select></div>
+    <button class="soft" onclick="loadRecord()">فتح</button><button class="danger" onclick="deleteRecord()">حذف</button><button class="soft" onclick="newRecord()">تقييم جديد</button>
+   </div>
   </div>
   <div class="hint">تُحفظ السجلات محليًا على نفس الجهاز والمتصفح. لا يتم إرسال بيانات السباح إلى الإنترنت.</div>
  </section>
@@ -107,7 +111,17 @@ function values(){return {academy:$("academy").value,swimmer:$("swimmer").value,
 function restore(d){["academy","swimmer","swimmerCode","age","coach","date","notes","signature"].forEach(k=>$(k).value=d[k]||"");$("academyTitle").textContent=($("academy").value||"أكاديمية السباحة")+" | تقييم المهارات";marks=d.marks||{};build()}
 function getRecords(){try{return JSON.parse(localStorage.getItem("swimAssessmentRecords")||"{}")}catch(e){return {}}}
 function saveRecord(){let d=values();if(!d.swimmer.trim()){alert("يرجى إدخال اسم السباح أولًا.");$("swimmer").focus();return}records=getRecords();let id=$("savedRecords").value||Date.now().toString();records[id]=d;localStorage.setItem("swimAssessmentRecords",JSON.stringify(records));refreshRecords(id);alert("تم حفظ التقييم على هذا الجهاز.");}
-function refreshRecords(selected=""){records=getRecords();$("savedRecords").innerHTML='<option value="">اختر تقييمًا محفوظًا</option>'+Object.entries(records).map(([id,d])=>`<option value="${id}">${d.swimmer||"سباح"}${d.swimmerCode?" ("+d.swimmerCode+")":""} — ${d.date||""}</option>`).join("");$("savedRecords").value=selected}
+function refreshRecords(selected=""){
+ records=getRecords();
+ const query=($("recordSearch")?.value||"").trim().toLocaleLowerCase("ar");
+ const filtered=Object.entries(records).filter(([id,d])=>{
+  const name=String(d.swimmer||"").toLocaleLowerCase("ar");
+  const code=String(d.swimmerCode||"").toLocaleLowerCase("ar");
+  return !query||name.includes(query)||code.includes(query);
+ });
+ $("savedRecords").innerHTML='<option value="">اختر تقييمًا محفوظًا</option>'+filtered.map(([id,d])=>`<option value="${id}">${d.swimmer||"سباح"}${d.swimmerCode?" ("+d.swimmerCode+")":""} — ${d.date||""}</option>`).join("");
+ $("savedRecords").value=filtered.some(([id])=>id===selected)?selected:"";
+}
 function loadRecord(){let id=$("savedRecords").value;if(!id||!records[id]){alert("اختر تقييمًا محفوظًا.");return}restore(records[id])}
 function deleteRecord(){let id=$("savedRecords").value;if(!id||!records[id]){alert("اختر تقييمًا لحذفه.");return}if(confirm("هل تريد حذف هذا التقييم؟")){delete records[id];localStorage.setItem("swimAssessmentRecords",JSON.stringify(records));refreshRecords();newRecord(false)}}
 function newRecord(ask=true){if(ask&&!confirm("بدء تقييم جديد؟ تأكد من حفظ التقييم الحالي."))return;restore({academy:"أكاديمية السباحة",date:new Date().toISOString().slice(0,10),marks:{}});refreshRecords()}
